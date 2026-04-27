@@ -1,0 +1,233 @@
+{
+  "name": "packlens",
+  "displayName": "PackLens",
+  "description": "Visual npm package manager for VS Code",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.109.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "packlens",
+          "title": "PackLens",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "packlens": [
+        {
+          "id": "packlens.projectsView",
+          "name": "Projects"
+        },
+        {
+          "id": "packlens.duplicatesView",
+          "name": "Duplicates"
+        },
+        {
+          "id": "packlens.statsView",
+          "name": "Stats"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "packlens.addFolder",
+        "title": "Add Folder",
+        "icon": "$(add)"
+      },
+      {
+        "command": "packlens.removeFolder",
+        "title": "Remove Folder",
+        "icon": "$(remove)"
+      },
+      {
+        "command": "packlens.quickScan",
+        "title": "Quick Scan",
+        "icon": "$(search)"
+      },
+      {
+        "command": "packlens.deepScan",
+        "title": "Deep Scan",
+        "icon": "$(database)"
+      },
+      {
+        "command": "packlens.refreshAll",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "packlens.openProject",
+        "title": "Open in VS Code",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "packlens.deleteNodeModules",
+        "title": "Delete node_modules",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "packlens.openPackageDetail",
+        "title": "View Package Details",
+        "icon": "$(info)"
+      },
+      {
+        "command": "packlens.installFromCache",
+        "title": "Add to Current Project",
+        "icon": "$(arrow-down)"
+      },
+      {
+        "command": "packlens.openPanel",
+        "title": "Open PackLens Panel",
+        "icon": "$(layout)"
+      },
+      {
+        "command": "packlens.checkOutdated",
+        "title": "Check Outdated Packages",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "packlens.findDead",
+        "title": "Find Unused Packages",
+        "icon": "$(search)"
+      },
+      {
+        "command": "packlens.saveTemplate",
+        "title": "Save as Template",
+        "icon": "$(save)"
+      },
+      {
+        "command": "packlens.applyTemplate",
+        "title": "Apply Template",
+        "icon": "$(desktop-download)"
+      },
+      {
+        "command": "packlens.deleteTemplate",
+        "title": "Delete Template",
+        "icon": "$(trash)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "packlens.addFolder",
+          "when": "view == packlens.projectsView",
+          "group": "navigation"
+        },
+        {
+          "command": "packlens.quickScan",
+          "when": "view == packlens.projectsView",
+          "group": "navigation"
+        },
+        {
+          "command": "packlens.deepScan",
+          "when": "view == packlens.projectsView",
+          "group": "navigation"
+        },
+        {
+          "command": "packlens.refreshAll",
+          "when": "view == packlens.projectsView",
+          "group": "navigation"
+        },
+        {
+          "command": "packlens.openPanel",
+          "when": "view == packlens.projectsView",
+          "group": "navigation"
+        },
+        {
+          "command": "packlens.checkOutdated",
+          "when": "view == packlens.projectsView",
+          "group": "navigation"
+        },
+        {
+          "command": "packlens.findDead",
+          "when": "view == packlens.projectsView",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "packlens.openProject",
+          "when": "viewItem == project",
+          "group": "inline"
+        },
+        {
+          "command": "packlens.deleteNodeModules",
+          "when": "viewItem == project",
+          "group": "inline"
+        },
+        {
+          "command": "packlens.openPackageDetail",
+          "when": "viewItem == package",
+          "group": "inline"
+        },
+        {
+          "command": "packlens.installFromCache",
+          "when": "viewItem == cachedPackage",
+          "group": "inline"
+        },
+        {
+          "command": "packlens.saveTemplate",
+          "when": "viewItem == project",
+          "group": "inline"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "PackLens",
+      "properties": {
+        "packlens.watchedFolders": {
+          "type": "array",
+          "default": [],
+          "description": "Folders PackLens will scan for npm projects"
+        },
+        "packlens.symlinkMode": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use symlinks when installing from cache (faster, saves space)"
+        },
+        "packlens.autoScanOnStartup": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically scan watched folders on startup"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.109.0",
+    "@typescript-eslint/eslint-plugin": "^8.25.0",
+    "@typescript-eslint/parser": "^8.25.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1",
+    "esbuild": "^0.25.0",
+    "eslint": "^9.21.0",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.7.3"
+  }
+}
