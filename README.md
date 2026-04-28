@@ -1,9 +1,13 @@
 # PackLens
 
-[![Version](https://img.shields.io/visual-studio-marketplace/v/firekid.packlens?style=flat-square&color=0078d4&label=version)](https://marketplace.visualstudio.com/items?itemName=firekid.packlens)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/firekid.packlens?style=flat-square&color=22c55e&label=installs)](https://marketplace.visualstudio.com/items?itemName=firekid.packlens)
-[![Rating](https://img.shields.io/visual-studio-marketplace/r/firekid.packlens?style=flat-square&color=f59e0b&label=rating)](https://marketplace.visualstudio.com/items?itemName=firekid.packlens)
+[![Version](https://img.shields.io/badge/version-0.0.1-0078d4?style=flat-square)](https://github.com/Firekid-is-him/packlens)
 [![License: MIT](https://img.shields.io/badge/license-MIT-8b5cf6?style=flat-square)](./LICENSE)
+[![VS Code](https://img.shields.io/badge/VS%20Code-1.109%2B-007ACC?style=flat-square&logo=visualstudiocode&logoColor=white)](https://code.visualstudio.com)
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-ready-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey?style=flat-square)](https://github.com/Firekid-is-him/packlens)
+[![GitHub stars](https://img.shields.io/github/stars/Firekid-is-him/packlens?style=flat-square&color=f59e0b&logo=github)](https://github.com/Firekid-is-him/packlens/stargazers)
+[![GitHub issues](https://img.shields.io/github/issues/Firekid-is-him/packlens?style=flat-square&color=ef4444&logo=github)](https://github.com/Firekid-is-him/packlens/issues)
 
 Visual npm package manager for VS Code. See every package across all your projects in one place, find duplicates, detect unused packages, and install from your local cache instead of downloading again.
 
@@ -11,7 +15,7 @@ Visual npm package manager for VS Code. See every package across all your projec
 
 ## The Problem
 
-Every project gets its own `node_modules`. You end up with the same packages downloaded 10, 20, 30 times across your machine. No tool tells you how bad it is until now.
+Every project gets its own `node_modules`. You end up with the same packages downloaded 10, 20, 30 times across your machine. No tool tells you how bad it is, until now.
 
 PackLens scans your projects, shows you the real numbers, and lets you install packages from projects you already have locally. No internet. No waiting.
 
@@ -23,7 +27,7 @@ PackLens scans your projects, shows you the real numbers, and lets you install p
 See all your npm projects in one panel. Package count, real node_modules size after a deep scan, last modified date. Everything at a glance without opening each project.
 
 ### Duplicate Detection
-PackLens finds packages installed across multiple projects and shows you exactly how much space is being wasted. The first time it runs, it shows you the total as a notification most devs are surprised by the number.
+PackLens finds packages installed across multiple projects and shows you exactly how much space is being wasted. The first time it runs, it shows you the total as a notification, most devs are surprised by the number.
 
 ### Install From Local Projects
 When you need a package in a new project, PackLens checks if you already have it somewhere on your machine first. If yes, it symlinks it directly, zero download, instant. Falls back to copy if symlinks aren't available, and only asks to use npm if the package genuinely doesn't exist locally.
@@ -76,11 +80,11 @@ When you click **Add** on any package in the All Packages view:
 
 : PackLens checks if the package already exists in any scanned project's node_modules
 
-: If found symlinks it directly to your target project. No download.
+: If found, symlinks it directly to your target project. No download.
 
-: If symlinks are unavailable on your system copies it instead. Still no download.
+: If symlinks are unavailable on your system, copies it instead. Still no download.
 
-: If not found anywhere locally asks before falling back to npm install
+: If not found anywhere locally, asks before falling back to npm install
 
 ---
 
@@ -104,7 +108,7 @@ When you click **Add** on any package in the All Packages view:
 
 ## Roadmap
 
-: File watcher — auto detect new projects without manual rescan
+: File watcher, auto detect new projects without manual rescan
 : CVE vulnerability alerts
 : Bundle size warnings before install
 : GitHub stars and weekly downloads in hover
