@@ -1,7 +1,7 @@
 {
-  "name": "packlens",
-  "displayName": "PackLens",
-  "description": "Visual npm package manager for VS Code",
+  "name": "packlens-x",
+  "displayName": "PackLens X",
+  "description": "Visual npm package manager for VS Code — see every package across all your projects, detect duplicates, find unused packages, and install from local cache.",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.109.0"
