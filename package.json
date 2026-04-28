@@ -234,5 +234,6 @@
     "type": "git",
     "url": "https://github.com/Firekid-is-him/packlens"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "publisher": "firekid"
 }
