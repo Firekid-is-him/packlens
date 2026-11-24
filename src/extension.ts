@@ -7,6 +7,7 @@ import { PackLensPanel } from './webviewPanel'
 import { installPackage } from './installer'
 import { checkOutdated, findDeadPackages, OutdatedPackage, DeadPackage } from './features'
 import { PackageJsonHoverProvider } from './hoverProvider'
+import { escapeHtml, npmPackageUrl, makeNonce } from './html'
 import { getTemplates, createTemplateFromProject, applyTemplate, deleteTemplate, serializeTemplates } from './templates'
 
 let projectsProvider: ProjectsProvider
@@ -275,8 +276,8 @@ async function openPackageDetail(item: any) {
   panel.webview.html = getPackageDetailHtml(pkg, project)
 
   panel.webview.onDidReceiveMessage(async msg => {
-    if (msg.command === 'openExternal') {
-      await vscode.env.openExternal(vscode.Uri.parse(msg.url))
+    if (msg?.command === 'openNpm') {
+      await vscode.env.openExternal(vscode.Uri.parse(npmPackageUrl(pkg.name)))
     }
   })
 }
@@ -310,12 +311,14 @@ async function installFromCache(item: any) {
 }
 
 function getPackageDetailHtml(pkg: any, project: any): string {
+  const nonce = makeNonce()
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${pkg.name}</title>
+  <title>${escapeHtml(pkg.name)}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -350,9 +353,9 @@ function getPackageDetailHtml(pkg: any, project: any): string {
   </style>
 </head>
 <body>
-  <h1>${pkg.name}</h1>
-  <div class="version">${pkg.version}</div>
-  ${pkg.description ? `<div class="description">${pkg.description}</div>` : ''}
+  <h1>${escapeHtml(pkg.name)}</h1>
+  <div class="version">${escapeHtml(pkg.version)}</div>
+  ${pkg.description ? `<div class="description">${escapeHtml(pkg.description)}</div>` : ''}
   <div class="grid">
     <div class="card">
       <div class="card-label">Size on disk</div>
@@ -360,17 +363,17 @@ function getPackageDetailHtml(pkg: any, project: any): string {
     </div>
     <div class="card">
       <div class="card-label">Project</div>
-      <div class="card-value">${project?.name || '—'}</div>
+      <div class="card-value">${escapeHtml(project?.name || '—')}</div>
     </div>
   </div>
   <div class="actions">
-    <button onclick="openNpm()">View on npm</button>
+    <button id="open-npm">View on npm</button>
   </div>
-  <script>
+  <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
-    function openNpm() {
-      vscode.postMessage({ command: 'openExternal', url: 'https://npmjs.com/package/${pkg.name}' });
-    }
+    document.getElementById('open-npm').addEventListener('click', () => {
+      vscode.postMessage({ command: 'openNpm' });
+    });
   </script>
 </body>
 </html>`
