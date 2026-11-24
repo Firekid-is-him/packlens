@@ -1,5 +1,7 @@
 import * as vscode from 'vscode'
 import { fetchPackageMeta } from './features'
+import { parseSpec, isNewer } from './version'
+import { escapeMarkdown, npmPackageUrl } from './html'
 
 const cache = new Map<string, { data: any; time: number }>()
 const CACHE_TTL = 5 * 60 * 1000
@@ -36,35 +38,26 @@ export class PackageJsonHoverProvider implements vscode.HoverProvider {
     const isDeprecated = !!meta.deprecated
 
     const md = new vscode.MarkdownString('', true)
-    md.isTrusted = true
+    md.isTrusted = false
     md.supportHtml = false
 
-    md.appendMarkdown(`**${meta.name}** \`${meta.version}\``)
+    md.appendMarkdown(`**${escapeMarkdown(meta.name)}** \`${escapeMarkdown(deps[pkgName])}\``)
     if (isDev) md.appendMarkdown(` — *devDependency*`)
     md.appendMarkdown('\n\n')
 
     if (isDeprecated) {
-      md.appendMarkdown(`⚠️ **Deprecated:** ${meta.deprecated}\n\n`)
+      md.appendMarkdown(`**Deprecated:** ${escapeMarkdown(meta.deprecated)}\n\n`)
     }
 
     if (meta.description) {
-      md.appendMarkdown(`${meta.description}\n\n`)
+      md.appendMarkdown(`${escapeMarkdown(meta.description)}\n\n`)
     }
 
-    if (meta.latestVersion && meta.latestVersion !== meta.version) {
-      md.appendMarkdown(`📦 Latest: \`${meta.latestVersion}\`\n\n`)
-    }
+    const declared = parseSpec(String(deps[pkgName]))
+    const outdated = declared !== null && isNewer(meta.version, declared)
+    md.appendMarkdown(`Latest: \`${escapeMarkdown(meta.version)}\`${outdated ? ' (update available)' : ''}\n\n`)
 
-    if (meta.publishedAt) {
-      const date = new Date(meta.publishedAt).toLocaleDateString()
-      md.appendMarkdown(`🕐 Published: ${date}\n\n`)
-    }
-
-    if (meta.homepage) {
-      md.appendMarkdown(`[View on npm](https://npmjs.com/package/${pkgName})`)
-    } else {
-      md.appendMarkdown(`[View on npm](https://npmjs.com/package/${pkgName})`)
-    }
+    md.appendMarkdown(`[View on npm](${npmPackageUrl(pkgName)})`)
 
     return new vscode.Hover(md, wordRange)
   }

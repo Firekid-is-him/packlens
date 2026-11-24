@@ -11,6 +11,10 @@ export function escapeHtml(value: unknown): string {
   return String(value ?? '').replace(/[&<>"'`]/g, ch => ESCAPES[ch])
 }
 
+export function escapeMarkdown(value: unknown): string {
+  return String(value ?? '').replace(/[\\`*_{}\[\]()#+!|<>~]/g, ch => '\\' + ch)
+}
+
 export function npmPackageUrl(name: string): string {
   return 'https://npmjs.com/package/' + String(name).split('/').map(encodeURIComponent).join('/')
 }

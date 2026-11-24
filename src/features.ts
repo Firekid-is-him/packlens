@@ -27,8 +27,6 @@ export interface NpmPackageMeta {
   description: string
   homepage?: string
   weeklyDownloads?: number
-  latestVersion?: string
-  publishedAt?: string
   deprecated?: string
 }
 
@@ -58,8 +56,7 @@ export async function fetchPackageMeta(packageName: string): Promise<NpmPackageM
       version: data.version,
       description: data.description || '',
       homepage: data.homepage,
-      deprecated: data.deprecated,
-      publishedAt: data.time?.[data.version]
+      deprecated: data.deprecated
     }
   } catch {
     return null
