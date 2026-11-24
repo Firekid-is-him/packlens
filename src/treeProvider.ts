@@ -121,6 +121,7 @@ export class ProjectsProvider implements vscode.TreeDataProvider<PackLensTreeIte
         )
         item.description = pkg.version
         item.tooltip = pkg.description || pkg.name
+        item.contextValue = project.nodeModulesExists ? 'package cachedPackage' : 'package'
         return item
       })
     }

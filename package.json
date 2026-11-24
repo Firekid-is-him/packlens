@@ -167,12 +167,12 @@
         },
         {
           "command": "packlens.openPackageDetail",
-          "when": "viewItem == package",
+          "when": "viewItem =~ /(^| )package( |$)/",
           "group": "inline"
         },
         {
           "command": "packlens.installFromCache",
-          "when": "viewItem == cachedPackage",
+          "when": "viewItem =~ /(^| )cachedPackage( |$)/",
           "group": "inline"
         },
         {
