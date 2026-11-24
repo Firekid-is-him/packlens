@@ -167,7 +167,7 @@ export class DuplicatesProvider implements vscode.TreeDataProvider<PackLensTreeI
           { pkgName, versions }
         )
         item.description = `${versions.reduce((a, v) => a + v.projects.length, 0)} projects — wasting ${formatBytes(totalWasted)}`
-        return [...items, item]
+        items.push(item)
       }
       return items
     }
