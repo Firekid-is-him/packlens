@@ -2,7 +2,11 @@
 
 All notable changes to PackLens are documented here.
 
-## [Unreleased]
+## [0.0.2] : 2026-11-24
+
+### Added
+
+: Extension icon
 
 ### Fixed
 
