@@ -59,6 +59,20 @@ suite('scanner', () => {
     assert.deepStrictEqual(dead, ['unused-lib'])
   })
 
+  test('deepScan sees symlinked packages, including scoped ones', async () => {
+    const source = makeProject(root, 'source', { lodash: '4.17.21', '@scope/pkg': '1.0.0' })
+    install(source, 'lodash', '4.17.21')
+    install(source, '@scope/pkg', '1.0.0')
+    const linked = makeProject(root, 'linked', { lodash: '4.17.21', '@scope/pkg': '1.0.0' })
+    fs.mkdirSync(path.join(linked, 'node_modules', '@scope'), { recursive: true })
+    fs.symlinkSync(path.join(source, 'node_modules', 'lodash'), path.join(linked, 'node_modules', 'lodash'), 'junction')
+    fs.symlinkSync(path.join(source, 'node_modules', '@scope', 'pkg'), path.join(linked, 'node_modules', '@scope', 'pkg'), 'junction')
+
+    const result = await deepScan([root], { report() {} })
+    const p = result.projects.find(x => x.name === 'linked')!
+    assert.deepStrictEqual(p.packages.map(x => x.name).sort(), ['@scope/pkg', 'lodash'])
+  })
+
   test('duplicates are detected across projects with real sizes', async () => {
     const a = makeProject(root, 'a', { lodash: '4.17.21' })
     const b = makeProject(root, 'b', { lodash: '4.17.21' })

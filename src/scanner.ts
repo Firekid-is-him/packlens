@@ -138,48 +138,53 @@ function countDependencies(pkg: any): number {
   return Object.keys({ ...pkg.dependencies, ...pkg.devDependencies }).length
 }
 
+function isDirectoryEntry(entry: fs.Dirent, parent: string): boolean {
+  if (entry.isDirectory()) return true
+  if (!entry.isSymbolicLink()) return false
+  try {
+    return fs.statSync(path.join(parent, entry.name)).isDirectory()
+  } catch {
+    return false
+  }
+}
+
+function safeReadDir(dir: string): fs.Dirent[] {
+  try {
+    return fs.readdirSync(dir, { withFileTypes: true })
+  } catch {
+    return []
+  }
+}
+
+async function readPackageAt(pkgPath: string, name: string): Promise<PackageInfo | null> {
+  const pkgJson = path.join(pkgPath, 'package.json')
+  if (!fs.existsSync(pkgJson)) return null
+  const info = readPackageJson(pkgJson)
+  return {
+    name,
+    version: info.version || 'unknown',
+    description: info.description,
+    sizeBytes: await getFolderSize(pkgPath)
+  }
+}
+
 async function readInstalledPackages(projectPath: string): Promise<PackageInfo[]> {
   const nodeModulesPath = path.join(projectPath, 'node_modules')
   const packages: PackageInfo[] = []
 
-  if (!fs.existsSync(nodeModulesPath)) return packages
-
-  const entries = fs.readdirSync(nodeModulesPath, { withFileTypes: true })
-
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue
+  for (const entry of safeReadDir(nodeModulesPath)) {
+    if (!isDirectoryEntry(entry, nodeModulesPath)) continue
 
     if (entry.name.startsWith('@')) {
       const scopePath = path.join(nodeModulesPath, entry.name)
-      const scopedEntries = fs.readdirSync(scopePath, { withFileTypes: true })
-      for (const scoped of scopedEntries) {
-        if (!scoped.isDirectory()) continue
-        const pkgPath = path.join(scopePath, scoped.name)
-        const pkgJson = path.join(pkgPath, 'package.json')
-        if (fs.existsSync(pkgJson)) {
-          const info = readPackageJson(pkgJson)
-          const size = await getFolderSize(pkgPath)
-          packages.push({
-            name: `${entry.name}/${scoped.name}`,
-            version: info.version || 'unknown',
-            description: info.description,
-            sizeBytes: size
-          })
-        }
+      for (const scoped of safeReadDir(scopePath)) {
+        if (!isDirectoryEntry(scoped, scopePath)) continue
+        const pkg = await readPackageAt(path.join(scopePath, scoped.name), entry.name + '/' + scoped.name)
+        if (pkg) packages.push(pkg)
       }
     } else {
-      const pkgPath = path.join(nodeModulesPath, entry.name)
-      const pkgJson = path.join(pkgPath, 'package.json')
-      if (fs.existsSync(pkgJson)) {
-        const info = readPackageJson(pkgJson)
-        const size = await getFolderSize(pkgPath)
-        packages.push({
-          name: entry.name,
-          version: info.version || 'unknown',
-          description: info.description,
-          sizeBytes: size
-        })
-      }
+      const pkg = await readPackageAt(path.join(nodeModulesPath, entry.name), entry.name)
+      if (pkg) packages.push(pkg)
     }
   }
 
