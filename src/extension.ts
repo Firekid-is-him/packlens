@@ -422,7 +422,7 @@ async function saveTemplateCmd(item: any) {
     vscode.window.showInformationMessage('Right-click a project to save it as a template.')
     return
   }
-  await createTemplateFromProject(extensionContext, project.name, project.packages)
+  await createTemplateFromProject(extensionContext, project.name, project.declared)
   if (PackLensPanel.currentPanel) {
     const templates = getTemplates(extensionContext)
     PackLensPanel.currentPanel.sendMessage({ command: 'templatesUpdate', data: serializeTemplates(templates) })

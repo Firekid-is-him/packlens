@@ -31,7 +31,7 @@ export async function deleteTemplate(context: vscode.ExtensionContext, id: strin
 export async function createTemplateFromProject(
   context: vscode.ExtensionContext,
   projectName: string,
-  packages: { name: string; version: string }[]
+  packages: { name: string; version: string; dev?: boolean }[]
 ) {
   const name = await vscode.window.showInputBox({
     prompt: 'Template name',
@@ -52,7 +52,7 @@ export async function createTemplateFromProject(
     packages: packages.map(p => ({
       name: p.name,
       version: normalizeVersion(p.version),
-      dev: false
+      dev: p.dev ?? false
     })),
     createdAt: new Date().toISOString()
   }

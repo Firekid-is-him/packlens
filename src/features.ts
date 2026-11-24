@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import * as https from 'https'
-import { ProjectInfo } from './scanner'
+import { ProjectInfo, PackageInfo } from './scanner'
 import { parseSpec, normalizeVersion, isNewer } from './version'
 
 const REGISTRY_CONCURRENCY = 8
@@ -77,11 +77,15 @@ async function mapPool<T>(items: T[], limit: number, fn: (item: T) => Promise<vo
   await Promise.all(workers)
 }
 
+function resolveCurrent(pkg: PackageInfo): string | null {
+  return parseSpec(pkg.installedVersion ?? '') ?? parseSpec(pkg.version)
+}
+
 export async function checkOutdated(projects: ProjectInfo[]): Promise<OutdatedPackage[]> {
   const names = new Set<string>()
   for (const project of projects) {
-    for (const pkg of project.packages) {
-      if (parseSpec(pkg.version) !== null) names.add(pkg.name)
+    for (const pkg of project.declared) {
+      if (resolveCurrent(pkg) !== null) names.add(pkg.name)
     }
   }
 
@@ -93,8 +97,8 @@ export async function checkOutdated(projects: ProjectInfo[]): Promise<OutdatedPa
 
   const outdated: OutdatedPackage[] = []
   for (const project of projects) {
-    for (const pkg of project.packages) {
-      const current = parseSpec(pkg.version)
+    for (const pkg of project.declared) {
+      const current = resolveCurrent(pkg)
       const latest = latestByName.get(pkg.name)
       if (current === null || !latest) continue
 
@@ -152,7 +156,7 @@ function walkSourceFiles(dir: string, files: string[] = []): string[] {
 
 export function findDeadPackages(project: ProjectInfo): DeadPackage[] {
   const dead: DeadPackage[] = []
-  if (project.packages.length === 0) return dead
+  if (project.declared.length === 0) return dead
 
   const sourceFiles = walkSourceFiles(project.folderPath)
   const usedPackages = new Set<string>()
@@ -170,8 +174,8 @@ export function findDeadPackages(project: ProjectInfo): DeadPackage[] {
     'tailwindcss', 'postcss', 'autoprefixer'
   ])
 
-  for (const pkg of project.packages) {
-    const cleanVersion = normalizeVersion(pkg.version)
+  for (const pkg of project.declared) {
+    const cleanVersion = pkg.installedVersion ?? normalizeVersion(pkg.version)
     const isTooling = Array.from(ALWAYS_USED).some(t => pkg.name.startsWith(t))
     if (isTooling) continue
     if (!usedPackages.has(pkg.name)) {

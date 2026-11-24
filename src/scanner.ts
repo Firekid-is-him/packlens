@@ -9,12 +9,15 @@ export interface PackageInfo {
   description?: string
   sizeBytes?: number
   projectCount?: number
+  dev?: boolean
+  installedVersion?: string
 }
 
 export interface ProjectInfo {
   name: string
   folderPath: string
   packages: PackageInfo[]
+  declared: PackageInfo[]
   nodeModulesSize?: number
   nodeModulesExists: boolean
   packageCount: number
@@ -49,7 +52,13 @@ export async function deepScan(watchedFolders: string[], progress: vscode.Progre
       progress.report({ message: `Scanning ${project.name}...` })
       if (project.nodeModulesExists) {
         project.nodeModulesSize = await getFolderSize(path.join(project.folderPath, 'node_modules'))
-        project.packages = await readInstalledPackages(project.folderPath)
+        const installed = await readInstalledPackages(project.folderPath)
+        const installedByName = new Map(installed.map(p => [p.name, p]))
+        for (const dep of project.declared) {
+          dep.installedVersion = installedByName.get(dep.name)?.version
+        }
+        project.packages = installed
+        project.packageCount = installed.length
       }
       projects.push(project)
     }
@@ -86,10 +95,13 @@ async function findProjects(rootFolder: string): Promise<ProjectInfo[]> {
       const nodeModulesExists = fs.existsSync(nodeModulesPath)
       const stat = fs.statSync(packageJsonPath)
 
+      const declared = readDependenciesFromPackageJson(info)
+
       projects.push({
         name: info.name || entry.name,
         folderPath: projectPath,
-        packages: readDependenciesFromPackageJson(info),
+        packages: declared,
+        declared,
         nodeModulesExists,
         packageCount: countDependencies(info),
         lastModified: stat.mtime
@@ -112,12 +124,14 @@ function readPackageJson(filePath: string): any {
 }
 
 function readDependenciesFromPackageJson(pkg: any): PackageInfo[] {
-  const deps: PackageInfo[] = []
-  const allDeps = { ...pkg.dependencies, ...pkg.devDependencies }
-  for (const [name, version] of Object.entries(allDeps)) {
-    deps.push({ name, version: String(version) })
+  const deps = new Map<string, PackageInfo>()
+  for (const [name, version] of Object.entries(pkg.dependencies || {})) {
+    deps.set(name, { name, version: String(version), dev: false })
   }
-  return deps
+  for (const [name, version] of Object.entries(pkg.devDependencies || {})) {
+    if (!deps.has(name)) deps.set(name, { name, version: String(version), dev: true })
+  }
+  return Array.from(deps.values())
 }
 
 function countDependencies(pkg: any): number {
