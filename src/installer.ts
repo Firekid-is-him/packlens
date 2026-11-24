@@ -1,7 +1,7 @@
 import * as vscode from 'vscode'
 import * as fs from 'fs'
 import * as path from 'path'
-import * as child_process from 'child_process'
+import * as childProcess from 'child_process'
 import { ScanResult } from './scanner'
 
 export interface InstallResult {
@@ -87,7 +87,7 @@ function updatePackageJson(projectPath: string, packageName: string, version: st
 
 function runNpmInstall(targetPath: string, packageName: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const proc = child_process.spawn('npm', ['install', packageName], {
+    const proc = childProcess.spawn('npm', ['install', packageName], {
       cwd: targetPath,
       shell: true,
       stdio: 'ignore'

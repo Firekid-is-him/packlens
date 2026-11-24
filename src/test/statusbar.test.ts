@@ -27,11 +27,11 @@ suite('status bar', () => {
 
   test('leaves the scanning label when a quick scan fails', async () => {
     const realExists = fs.existsSync
-    ;fs.existsSync = (p: string) => { if (String(p).endsWith('node_modules')) throw new Error('EPERM'); return realExists(p) }
+    fs.existsSync = (p: string) => { if (String(p).endsWith('node_modules')) throw new Error('EPERM'); return realExists(p) }
     try {
       await state.commands['packlens.quickScan']()
     } finally {
-      ;fs.existsSync = realExists
+      fs.existsSync = realExists
     }
     assert.ok(!state.status.text.includes('spin') && state.status.text.startsWith('$(package) PackLens'), state.status.text)
     assert.ok(state.messages.some(m => m.startsWith('ERR: PackLens scan failed')))
@@ -39,11 +39,11 @@ suite('status bar', () => {
 
   test('leaves the scanning label when a deep scan fails', async () => {
     const realExists = fs.existsSync
-    ;fs.existsSync = (p: string) => { if (String(p).endsWith('node_modules')) throw new Error('EPERM'); return realExists(p) }
+    fs.existsSync = (p: string) => { if (String(p).endsWith('node_modules')) throw new Error('EPERM'); return realExists(p) }
     try {
       await state.commands['packlens.deepScan']()
     } finally {
-      ;fs.existsSync = realExists
+      fs.existsSync = realExists
     }
     assert.ok(!state.status.text.includes('spin') && state.status.text.startsWith('$(package) PackLens'), state.status.text)
     assert.ok(state.messages.some(m => m.startsWith('ERR: PackLens deep scan failed')))

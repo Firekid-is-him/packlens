@@ -2,6 +2,38 @@
 
 All notable changes to PackLens are documented here.
 
+## [Unreleased]
+
+### Fixed
+
+: Duplicates view listed only the first duplicated package
+
+: Unused and outdated checks now use declared dependencies, not everything in node_modules, after a deep scan
+
+: Dependency ranges like >=1.0.0, 1.x and prereleases are parsed correctly, and workspace, git, file and npm alias specs are skipped
+
+: Outdated check queries the registry once per package, in parallel
+
+: Deep scan follows symlinked packages and survives unreadable folders
+
+: Status bar no longer stays on Scanning when a scan fails
+
+: Saved templates load when the panel opens
+
+: Add to Current Project button now appears on installed packages in the tree
+
+: Installer links scoped packages and keeps package.json line endings, indentation and trailing newline
+
+: Webview buttons work with Windows paths and names containing quotes, and all displayed data is escaped
+
+: Package detail page escapes package fields and uses a content security policy
+
+: Hover shows the real latest version and no longer trusts registry text
+
+: Icon library is bundled instead of loaded from unpkg
+
+: Lint config and npm test run again
+
 ## [0.0.1] : 2026-04-27
 
 ### Added
