@@ -44,13 +44,21 @@ function getInstalledVersion(packagePath: string): string {
   }
 }
 
-function copyDir(src: string, dest: string) {
+export function copyDir(src: string, dest: string) {
   fs.mkdirSync(dest, { recursive: true })
   const entries = fs.readdirSync(src, { withFileTypes: true })
   for (const entry of entries) {
     const srcPath = path.join(src, entry.name)
     const destPath = path.join(dest, entry.name)
-    if (entry.isDirectory()) {
+    let isDir = entry.isDirectory()
+    if (entry.isSymbolicLink()) {
+      try {
+        isDir = fs.statSync(srcPath).isDirectory()
+      } catch {
+        continue
+      }
+    }
+    if (isDir) {
       copyDir(srcPath, destPath)
     } else {
       fs.copyFileSync(srcPath, destPath)
@@ -62,10 +70,18 @@ function updatePackageJson(projectPath: string, packageName: string, version: st
   const pkgJsonPath = path.join(projectPath, 'package.json')
   if (!fs.existsSync(pkgJsonPath)) return
   try {
-    const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf-8'))
-    pkg.dependencies = pkg.dependencies || {}
-    pkg.dependencies[packageName] = `^${version}`
-    fs.writeFileSync(pkgJsonPath, JSON.stringify(pkg, null, 2))
+    const raw = fs.readFileSync(pkgJsonPath, 'utf-8')
+    const pkg = JSON.parse(raw)
+    const eol = raw.includes('\r\n') ? '\r\n' : '\n'
+    const indent = raw.match(/^([ \t]+)"/m)?.[1] ?? '  '
+    const trailingNewline = /\r?\n$/.test(raw)
+
+    const deps: Record<string, string> = { ...(pkg.dependencies || {}), [packageName]: `^${version}` }
+    pkg.dependencies = Object.fromEntries(Object.entries(deps).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+
+    let out = JSON.stringify(pkg, null, indent)
+    if (eol === '\r\n') out = out.replace(/\n/g, '\r\n')
+    fs.writeFileSync(pkgJsonPath, out + (trailingNewline ? eol : ''))
   } catch {}
 }
 
@@ -103,7 +119,7 @@ export async function installPackage(
 
   if (sourcePath) {
     const version = getInstalledVersion(sourcePath)
-    fs.mkdirSync(nodeModulesPath, { recursive: true })
+    fs.mkdirSync(path.dirname(targetPkgPath), { recursive: true })
 
     if (canSymlink()) {
       try {
