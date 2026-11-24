@@ -2,6 +2,9 @@ import * as fs from 'fs'
 import * as path from 'path'
 import * as https from 'https'
 import { ProjectInfo } from './scanner'
+import { parseSpec, normalizeVersion, isNewer } from './version'
+
+const REGISTRY_CONCURRENCY = 8
 
 export interface OutdatedPackage {
   name: string
@@ -63,26 +66,42 @@ export async function fetchPackageMeta(packageName: string): Promise<NpmPackageM
   }
 }
 
-export async function checkOutdated(projects: ProjectInfo[]): Promise<OutdatedPackage[]> {
-  const outdated: OutdatedPackage[] = []
-  const checked = new Map<string, string>()
+async function mapPool<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
+  let next = 0
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const item = items[next++]
+      await fn(item)
+    }
+  })
+  await Promise.all(workers)
+}
 
+export async function checkOutdated(projects: ProjectInfo[]): Promise<OutdatedPackage[]> {
+  const names = new Set<string>()
   for (const project of projects) {
     for (const pkg of project.packages) {
-      const cleanCurrent = pkg.version.replace(/[\^~>=<]/, '').trim()
-      if (!cleanCurrent || cleanCurrent === '*' || cleanCurrent === 'latest') continue
+      if (parseSpec(pkg.version) !== null) names.add(pkg.name)
+    }
+  }
 
-      let latest = checked.get(pkg.name)
-      if (!latest) {
-        const meta = await fetchPackageMeta(pkg.name)
-        latest = meta?.version || cleanCurrent
-        checked.set(pkg.name, latest)
-      }
+  const latestByName = new Map<string, string>()
+  await mapPool(Array.from(names), REGISTRY_CONCURRENCY, async name => {
+    const meta = await fetchPackageMeta(name)
+    if (meta?.version) latestByName.set(name, meta.version)
+  })
 
-      if (latest && latest !== cleanCurrent && isNewer(latest, cleanCurrent)) {
+  const outdated: OutdatedPackage[] = []
+  for (const project of projects) {
+    for (const pkg of project.packages) {
+      const current = parseSpec(pkg.version)
+      const latest = latestByName.get(pkg.name)
+      if (current === null || !latest) continue
+
+      if (isNewer(latest, current)) {
         outdated.push({
           name: pkg.name,
-          current: cleanCurrent,
+          current,
           latest,
           projectName: project.name,
           projectPath: project.folderPath
@@ -92,21 +111,6 @@ export async function checkOutdated(projects: ProjectInfo[]): Promise<OutdatedPa
   }
 
   return outdated
-}
-
-function isNewer(a: string, b: string): boolean {
-  try {
-    const pa = a.split('.').map(Number)
-    const pb = b.split('.').map(Number)
-    for (let i = 0; i < 3; i++) {
-      const diff = (pa[i] || 0) - (pb[i] || 0)
-      if (diff > 0) return true
-      if (diff < 0) return false
-    }
-    return false
-  } catch {
-    return false
-  }
 }
 
 const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.vue', '.svelte']
@@ -167,7 +171,7 @@ export function findDeadPackages(project: ProjectInfo): DeadPackage[] {
   ])
 
   for (const pkg of project.packages) {
-    const cleanVersion = pkg.version.replace(/[\^~>=<]/, '')
+    const cleanVersion = normalizeVersion(pkg.version)
     const isTooling = Array.from(ALWAYS_USED).some(t => pkg.name.startsWith(t))
     if (isTooling) continue
     if (!usedPackages.has(pkg.name)) {

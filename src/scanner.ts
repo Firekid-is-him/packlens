@@ -1,6 +1,7 @@
 import * as vscode from 'vscode'
 import * as fs from 'fs'
 import * as path from 'path'
+import { normalizeVersion } from './version'
 
 export interface PackageInfo {
   name: string
@@ -202,7 +203,7 @@ function detectDuplicates(projects: ProjectInfo[]): Map<string, { version: strin
     for (const pkg of project.packages) {
       if (!map.has(pkg.name)) map.set(pkg.name, new Map())
       const versionMap = map.get(pkg.name)!
-      const cleanVersion = pkg.version.replace(/[\^~]/, '')
+      const cleanVersion = normalizeVersion(pkg.version)
       if (!versionMap.has(cleanVersion)) {
         versionMap.set(cleanVersion, { projects: [], totalSize: 0 })
       }

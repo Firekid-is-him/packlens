@@ -1,4 +1,5 @@
 import * as vscode from 'vscode'
+import { normalizeVersion } from './version'
 
 export interface Template {
   id: string
@@ -50,7 +51,7 @@ export async function createTemplateFromProject(
     description: description || '',
     packages: packages.map(p => ({
       name: p.name,
-      version: p.version.replace(/[\^~>=<]/, ''),
+      version: normalizeVersion(p.version),
       dev: false
     })),
     createdAt: new Date().toISOString()
