@@ -3,10 +3,12 @@ import * as path from 'path'
 import * as fs from 'fs'
 import { ScanResult, formatBytes } from './scanner'
 import { installPackage } from './installer'
+import { getTemplates, serializeTemplates } from './templates'
 
 export class PackLensPanel {
   static currentPanel: PackLensPanel | undefined
   private readonly panel: vscode.WebviewPanel
+  private readonly context: vscode.ExtensionContext
   private scanResult: ScanResult | null = null
   private disposables: vscode.Disposable[] = []
 
@@ -35,6 +37,7 @@ export class PackLensPanel {
 
   private constructor(panel: vscode.WebviewPanel, context: vscode.ExtensionContext, scanResult: ScanResult | null) {
     this.panel = panel
+    this.context = context
     this.scanResult = scanResult
     this.panel.webview.html = this.getHtml()
 
@@ -44,6 +47,7 @@ export class PackLensPanel {
       switch (msg.command) {
         case 'ready':
           if (this.scanResult) this.update(this.scanResult)
+          this.sendTemplates()
           break
         case 'addToProject':
           await this.handleInstall(msg.packageName, msg.version)
@@ -93,6 +97,11 @@ export class PackLensPanel {
   update(result: ScanResult) {
     this.scanResult = result
     this.panel.webview.postMessage({ command: 'updateData', data: this.serializeResult(result) })
+  }
+
+  private sendTemplates() {
+    const templates = getTemplates(this.context)
+    this.panel.webview.postMessage({ command: 'templatesUpdate', data: serializeTemplates(templates) })
   }
 
   sendMessage(msg: any) {
