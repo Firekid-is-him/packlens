@@ -4,6 +4,7 @@ import * as fs from 'fs'
 import { ScanResult, formatBytes } from './scanner'
 import { installPackage } from './installer'
 import { getTemplates, serializeTemplates } from './templates'
+import { npmPackageUrl } from './html'
 
 export class PackLensPanel {
   static currentPanel: PackLensPanel | undefined
@@ -28,7 +29,7 @@ export class PackLensPanel {
       {
         enableScripts: true,
         retainContextWhenHidden: true,
-        localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'resources')]
+        localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'resources'), vscode.Uri.joinPath(context.extensionUri, 'dist')]
       }
     )
 
@@ -59,7 +60,9 @@ export class PackLensPanel {
           await vscode.commands.executeCommand('packlens.deleteNodeModulesPath', msg.folderPath, msg.projectName)
           break
         case 'openNpm':
-          await vscode.env.openExternal(vscode.Uri.parse(`https://npmjs.com/package/${msg.packageName}`))
+          if (typeof msg.packageName === 'string' && msg.packageName) {
+            await vscode.env.openExternal(vscode.Uri.parse(npmPackageUrl(msg.packageName)))
+          }
           break
         case 'runDeepScan':
           await vscode.commands.executeCommand('packlens.deepScan')
@@ -213,13 +216,14 @@ export class PackLensPanel {
   }
 
   private getHtml(): string {
+    const lucideUri = this.panel.webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'dist', 'lucide.min.js'))
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PackLens</title>
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="${lucideUri}"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -741,6 +745,29 @@ export class PackLensPanel {
     vscode.postMessage({ command, ...extra })
   }
 
+  function esc(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
+  }
+
+  function icons() {
+    if (typeof lucide !== 'undefined') lucide.createIcons()
+  }
+
+  document.addEventListener('click', e => {
+    const el = e.target.closest('[data-action]')
+    if (!el || el.disabled) return
+    const d = el.dataset
+    switch (d.action) {
+      case 'openProject': send('openProject', { folderPath: d.folder }); break
+      case 'deleteNodeModules': send('deleteNodeModules', { folderPath: d.folder, projectName: d.project }); break
+      case 'addToProject': send('addToProject', { packageName: d.pkg, version: d.version }); break
+      case 'openNpm': send('openNpm', { packageName: d.pkg }); break
+      case 'installFromTemplate': send('installFromTemplate', { packageName: d.pkg, version: d.version }); break
+      case 'deleteTemplate': send('deleteTemplate', { id: d.id }); break
+      case 'applyTemplate': send('applyTemplate'); break
+    }
+  })
+
   function switchTab(id) {
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === id))
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + id))
@@ -753,27 +780,28 @@ export class PackLensPanel {
       render()
     }
     if (msg.command === 'installSuccess') {
-      const btn = document.querySelector('[data-pkg="' + msg.packageName + '"]')
-      if (btn) { btn.textContent = 'Added'; btn.disabled = true }
+      document.querySelectorAll('[data-pkg]').forEach(btn => {
+        if (btn.dataset.pkg === msg.packageName) { btn.textContent = 'Added'; btn.disabled = true }
+      })
     }
     if (msg.command === 'outdatedResult') {
       renderOutdated(msg.data)
       document.getElementById('outdated-count').textContent = msg.data.length
-      lucide.createIcons()
+      icons()
     }
     if (msg.command === 'deadResult') {
       renderDead(msg.data)
       document.getElementById('dead-count').textContent = msg.data.length
-      lucide.createIcons()
+      icons()
     }
     if (msg.command === 'templatesUpdate') {
       renderTemplates(msg.data)
-      lucide.createIcons()
+      icons()
     }
     if (msg.command === 'applyTemplate') {
       renderTemplateInstaller(msg.data)
       switchTab('templates')
-      lucide.createIcons()
+      icons()
     }
   })
 
@@ -790,7 +818,7 @@ export class PackLensPanel {
     renderPackages(allPackages)
     renderDuplicates(duplicates)
 
-    lucide.createIcons()
+    icons()
   }
 
   function renderOverview(stats, projects, duplicates) {
@@ -859,7 +887,7 @@ export class PackLensPanel {
     if (!appData) return
     const filtered = appData.projects.filter(p => p.name.toLowerCase().includes(q.toLowerCase()))
     document.getElementById('projects-grid').innerHTML = filtered.map(p => projectCard(p)).join('')
-    lucide.createIcons()
+    icons()
   }
 
   function renderPackages(packages) {
@@ -873,7 +901,7 @@ export class PackLensPanel {
     if (!appData) return
     const filtered = appData.allPackages.filter(p => p.name.toLowerCase().includes(q.toLowerCase()))
     document.getElementById('packages-list').innerHTML = filtered.map(p => pkgRow(p, true)).join('')
-    lucide.createIcons()
+    icons()
   }
 
   function sortPackages(by, el) {
@@ -884,7 +912,7 @@ export class PackLensPanel {
       const q = document.getElementById('package-search').value
       const filtered = appData.allPackages.filter(p => p.name.toLowerCase().includes(q.toLowerCase()))
       document.getElementById('packages-list').innerHTML = sortedPackages(filtered, by).map(p => pkgRow(p, true)).join('')
-      lucide.createIcons()
+      icons()
     }
   }
 
@@ -912,13 +940,13 @@ export class PackLensPanel {
         <div class="project-card-header">
           <div class="project-card-title">
             <i data-lucide="folder"></i>
-            <span title="\${p.folderPath}">\${p.name}</span>
+            <span title="\${esc(p.folderPath)}">\${esc(p.name)}</span>
           </div>
           <div class="project-card-actions">
-            <button class="btn ghost small" title="Open project" onclick="send('openProject', { folderPath: '\${p.folderPath}' })">
+            <button class="btn ghost small" title="Open project" data-action="openProject" data-folder="\${esc(p.folderPath)}">
               <i data-lucide="external-link"></i>
             </button>
-            \${p.nodeModulesExists ? \`<button class="btn ghost small" title="Delete node_modules" onclick="send('deleteNodeModules', { folderPath: '\${p.folderPath}', projectName: '\${p.name}' })">
+            \${p.nodeModulesExists ? \`<button class="btn ghost small" title="Delete node_modules" data-action="deleteNodeModules" data-folder="\${esc(p.folderPath)}" data-project="\${esc(p.name)}">
               <i data-lucide="trash-2"></i>
             </button>\` : ''}
           </div>
@@ -928,8 +956,8 @@ export class PackLensPanel {
             <i data-lucide="\${p.nodeModulesExists ? 'package' : 'alert-circle'}"></i>
             \${p.nodeModulesExists ? p.packageCount + ' packages' : 'no node_modules'}
           </span>
-          \${p.nodeModulesSizeFormatted ? \`<span class="meta-chip"><i data-lucide="hard-drive"></i> \${p.nodeModulesSizeFormatted}</span>\` : ''}
-          \${p.lastModified ? \`<span class="meta-chip"><i data-lucide="clock"></i> \${p.lastModified}</span>\` : ''}
+          \${p.nodeModulesSizeFormatted ? \`<span class="meta-chip"><i data-lucide="hard-drive"></i> \${esc(p.nodeModulesSizeFormatted)}</span>\` : ''}
+          \${p.lastModified ? \`<span class="meta-chip"><i data-lucide="clock"></i> \${esc(p.lastModified)}</span>\` : ''}
         </div>
       </div>
     \`
@@ -940,17 +968,17 @@ export class PackLensPanel {
       <div class="pkg-row">
         <div class="pkg-row-left">
           <i data-lucide="box"></i>
-          <span class="pkg-name" title="\${p.description || p.name}">\${p.name}</span>
-          <span class="pkg-version">\${p.version}</span>
+          <span class="pkg-name" title="\${esc(p.description || p.name)}">\${esc(p.name)}</span>
+          <span class="pkg-version">\${esc(p.version)}</span>
         </div>
         <div class="pkg-row-right">
-          \${p.sizeFormatted ? \`<span class="pkg-size">\${p.sizeFormatted}</span>\` : ''}
+          \${p.sizeFormatted ? \`<span class="pkg-size">\${esc(p.sizeFormatted)}</span>\` : ''}
           \${p.projects && p.projects.length > 1 ? \`<span class="pkg-projects">\${p.projects.length} projects</span>\` : ''}
           \${showInstall ? \`
-            <button class="btn secondary small" data-pkg="\${p.name}" title="Add to current project" onclick="send('addToProject', { packageName: '\${p.name}', version: '\${p.version}' })">
+            <button class="btn secondary small" data-action="addToProject" data-pkg="\${esc(p.name)}" data-version="\${esc(p.version)}" title="Add to current project">
               <i data-lucide="plus"></i> Add
             </button>
-            <button class="btn ghost small" title="View on npm" onclick="send('openNpm', { packageName: '\${p.name}' })">
+            <button class="btn ghost small" title="View on npm" data-action="openNpm" data-pkg="\${esc(p.name)}">
               <i data-lucide="external-link"></i>
             </button>
           \` : ''}
@@ -965,18 +993,18 @@ export class PackLensPanel {
         <div class="dup-left">
           <i data-lucide="alert-triangle"></i>
           <div>
-            <div class="dup-name">\${d.name}</div>
-            <div class="dup-meta">v\${d.version} · \${d.projectCount} projects: \${d.projects.slice(0,3).join(', ')}\${d.projects.length > 3 ? '...' : ''}</div>
+            <div class="dup-name">\${esc(d.name)}</div>
+            <div class="dup-meta">v\${esc(d.version)} · \${d.projectCount} projects: \${esc(d.projects.slice(0,3).join(', '))}\${d.projects.length > 3 ? '...' : ''}</div>
           </div>
         </div>
         <div class="dup-right">
-          \${d.wastedFormatted !== '0 B' ? \`<span class="wasted-badge">~\${d.wastedFormatted} wasted</span>\` : ''}
+          \${d.wastedFormatted !== '0 B' ? \`<span class="wasted-badge">~\${esc(d.wastedFormatted)} wasted</span>\` : ''}
         </div>
       </div>
     \`
   }
 
-  lucide.createIcons()
+  icons()
   function renderOutdated(outdated) {
     const el = document.getElementById('outdated-list')
     if (!outdated || outdated.length === 0) {
@@ -988,12 +1016,12 @@ export class PackLensPanel {
         <div class="dup-left">
           <i data-lucide="refresh-cw"></i>
           <div>
-            <div class="dup-name">\${o.name}</div>
-            <div class="dup-meta">\${o.projectName} · current: \${o.current}</div>
+            <div class="dup-name">\${esc(o.name)}</div>
+            <div class="dup-meta">\${esc(o.projectName)} · current: \${esc(o.current)}</div>
           </div>
         </div>
         <div class="dup-right">
-          <span class="wasted-badge" style="background:#22c55e18;color:#22c55e">→ \${o.latest}</span>
+          <span class="wasted-badge" style="background:#22c55e18;color:#22c55e">→ \${esc(o.latest)}</span>
         </div>
       </div>
     \`).join('')
@@ -1010,8 +1038,8 @@ export class PackLensPanel {
         <div class="dup-left">
           <i data-lucide="package-x"></i>
           <div>
-            <div class="dup-name">\${d.name}</div>
-            <div class="dup-meta">\${d.projectName} · v\${d.version} · not imported in any source file</div>
+            <div class="dup-name">\${esc(d.name)}</div>
+            <div class="dup-meta">\${esc(d.projectName)} · v\${esc(d.version)} · not imported in any source file</div>
           </div>
         </div>
         <div class="dup-right">
@@ -1032,15 +1060,15 @@ export class PackLensPanel {
         <div class="dup-left">
           <i data-lucide="layout-template"></i>
           <div>
-            <div class="dup-name">\${t.name}</div>
-            <div class="dup-meta">\${t.description ? t.description + ' · ' : ''}\${t.packageCount} packages · \${t.createdAt}</div>
+            <div class="dup-name">\${esc(t.name)}</div>
+            <div class="dup-meta">\${esc(t.description ? t.description + ' · ' : '')}\${t.packageCount} packages · \${esc(t.createdAt)}</div>
           </div>
         </div>
         <div class="dup-right" style="gap:6px">
-          <button class="btn secondary small" onclick="send('applyTemplate')">
+          <button class="btn secondary small" data-action="applyTemplate">
             <i data-lucide="download"></i> Apply
           </button>
-          <button class="btn ghost small" onclick="send('deleteTemplate', { id: '\${t.id}' })">
+          <button class="btn ghost small" data-action="deleteTemplate" data-id="\${esc(t.id)}">
             <i data-lucide="trash-2"></i>
           </button>
         </div>
@@ -1052,18 +1080,18 @@ export class PackLensPanel {
     const el = document.getElementById('templates-list')
     el.innerHTML = \`
       <div style="margin-bottom:16px">
-        <div style="font-size:14px;font-weight:600;margin-bottom:4px">Applying: \${template.name}</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px">Applying: \${esc(template.name)}</div>
         <div style="font-size:12px;color:var(--fg2);margin-bottom:16px">\${template.packages.length} packages — click Add on each to install</div>
         <div class="pkg-list">
           \${template.packages.map(p => \`
             <div class="pkg-row">
               <div class="pkg-row-left">
                 <i data-lucide="box"></i>
-                <span class="pkg-name">\${p.name}</span>
-                <span class="pkg-version">\${p.version}</span>
+                <span class="pkg-name">\${esc(p.name)}</span>
+                <span class="pkg-version">\${esc(p.version)}</span>
               </div>
               <div class="pkg-row-right">
-                <button class="btn secondary small" data-pkg="\${p.name}" onclick="send('installFromTemplate', { packageName: '\${p.name}', version: '\${p.version}' })">
+                <button class="btn secondary small" data-action="installFromTemplate" data-pkg="\${esc(p.name)}" data-version="\${esc(p.version)}">
                   <i data-lucide="plus"></i> Add
                 </button>
               </div>

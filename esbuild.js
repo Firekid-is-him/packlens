@@ -1,4 +1,6 @@
 const esbuild = require("esbuild");
+const fs = require("fs");
+const path = require("path");
 
 const production = process.argv.includes('--production');
 const watch = process.argv.includes('--watch');
@@ -23,7 +25,15 @@ const esbuildProblemMatcherPlugin = {
 	},
 };
 
+function copyLucide() {
+	const source = path.join(__dirname, 'node_modules', 'lucide', 'dist', 'umd', 'lucide.min.js');
+	const target = path.join(__dirname, 'dist', 'lucide.min.js');
+	fs.mkdirSync(path.dirname(target), { recursive: true });
+	fs.copyFileSync(source, target);
+}
+
 async function main() {
+	copyLucide();
 	const ctx = await esbuild.context({
 		entryPoints: [
 			'src/extension.ts'

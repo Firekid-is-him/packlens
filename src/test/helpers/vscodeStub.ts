@@ -95,7 +95,9 @@ const stub = {
         set html(v: string) { state.htmls.push(v) },
         get html() { return state.htmls[state.htmls.length - 1] },
         onDidReceiveMessage: (h: (msg: any) => any) => { state.handlers.push(h); return { dispose() {} } },
-        postMessage: (m: any) => { state.posted.push(m); return Promise.resolve(true) }
+        postMessage: (m: any) => { state.posted.push(m); return Promise.resolve(true) },
+        asWebviewUri: (u: unknown) => u,
+        cspSource: 'vscode-resource:'
       },
       onDidDispose() {},
       reveal() {},
