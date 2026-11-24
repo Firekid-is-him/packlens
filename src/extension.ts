@@ -149,6 +149,7 @@ async function runQuickScan() {
     vscode.window.showErrorMessage(`PackLens scan failed: ${err}`)
   } finally {
     projectsProvider.setLoading(false)
+    updateStatusBar(lastScanResult)
   }
 }
 
@@ -184,6 +185,7 @@ async function runDeepScan() {
       vscode.window.showErrorMessage(`PackLens deep scan failed: ${err}`)
     } finally {
       projectsProvider.setLoading(false)
+      updateStatusBar(lastScanResult)
     }
   })
 }
@@ -193,13 +195,22 @@ function applyResult(result: ScanResult) {
   duplicatesProvider.setScanResult(result)
   statsProvider.setScanResult(result)
 
-  const wasted = calculateWastedSpace(result)
-  statusBarItem.text = `$(package) PackLens: ${formatBytes(result.totalSize)}`
-  statusBarItem.tooltip = `${result.projects.length} projects · ${formatBytes(wasted)} wasted\nClick to open PackLens`
+  updateStatusBar(result)
 
   if (PackLensPanel.currentPanel) {
     setTimeout(() => PackLensPanel.currentPanel?.update(result), 1500)
   }
+}
+
+function updateStatusBar(result: ScanResult | null) {
+  if (!result) {
+    statusBarItem.text = '$(package) PackLens'
+    statusBarItem.tooltip = 'Open PackLens'
+    return
+  }
+  const wasted = calculateWastedSpace(result)
+  statusBarItem.text = `$(package) PackLens: ${formatBytes(result.totalSize)}`
+  statusBarItem.tooltip = `${result.projects.length} projects · ${formatBytes(wasted)} wasted\nClick to open PackLens`
 }
 
 function calculateWastedSpace(result: ScanResult): number {
